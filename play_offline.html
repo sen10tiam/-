@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Chronicles of Eldoria - Offline Standalone Edition</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #020617; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #f8fafc; }
+    #game-container { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; }
+    header { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+    .hero-info { display: flex; align-items: center; gap: 12px; }
+    .hero-badge { background: #1e1b4b; border: 1px solid #4338ca; color: #a5b4fc; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    .gold-badge { background: #451a03; border: 1px solid #b45309; color: #fde047; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+    .btn { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn:hover { background: #334155; transform: translateY(-1px); }
+    .btn-primary { background: linear-gradient(135deg, #4f46e5, #7c3aed); border-color: #6366f1; color: white; }
+    .btn-primary:hover { background: linear-gradient(135deg, #4338ca, #6d28d9); }
+    .btn-emerald { background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399; color: white; }
+    #canvas-wrap { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; background: #090d16; }
+    canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+    .floating-prompt { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.95); border: 2px solid #f59e0b; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; color: #fef08a; pointer-events: none; animation: bounce 1.5s infinite; box-shadow: 0 10px 25px rgba(0,0,0,0.6); z-index: 25; }
+    @keyframes bounce { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -6px); } }
+    .modal { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px; }
+    .modal-box { background: #0f172a; border: 1px solid #334155; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 12px; margin-bottom: 16px; }
+    .bar-bg { width: 90px; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 3px; }
+    .bar-fill-hp { height: 100%; background: #ef4444; transition: width 0.3s ease; }
+    .bar-fill-mp { height: 100%; background: #6366f1; transition: width 0.3s ease; }
+    /* Virtual d-pad for mobile / touch */
+    .dpad { position: absolute; bottom: 16px; left: 16px; z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .dpad-row { display: flex; gap: 4px; }
+    .dpad-btn { width: 44px; height: 44px; background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 10px; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .dpad-btn:active { background: #4f46e5; }
+    .action-btn { position: absolute; bottom: 20px; right: 20px; z-index: 20; width: 56px; height: 56px; border-radius: 28px; background: #f59e0b; border: 2px solid #fef08a; color: #0f172a; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+    .zone-title { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.85); border: 1px solid #334155; padding: 4px 14px; border-radius: 12px; font-size: 12px; color: #94a3b8; letter-spacing: 0.5px; z-index: 15; pointer-events: none; }
+  </style>
+</head>
+<body>
+<div id="game-container">
+  <header>
+    <div class="hero-info">
+      <div id="hero-avatar" style="font-size: 26px; cursor: pointer;" title="Герой / Character (C)">⚔️</div>
+      <div>
+        <div style="font-size: 14px; font-weight: bold; display: flex; gap: 6px; align-items: center;">
+          <span id="hero-name">Eldor</span>
+          <span class="hero-badge" id="hero-level">Lv.1 Warrior</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+          <span style="font-size: 11px; color: #f87171;">HP</span>
+          <div class="bar-bg"><div class="bar-fill-hp" id="hp-bar" style="width: 100%;"></div></div>
+          <span style="font-size: 11px; color: #818cf8;">MP</span>
+          <div class="bar-bg"><div class="bar-fill-mp" id="mp-bar" style="width: 100%;"></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <span class="gold-badge" id="hero-gold">💰 50</span>
+      <button class="btn" onclick="openInventory()">🎒 Инвентарь</button>
+      <button class="btn" onclick="openCharacter()">👤 Статы</button>
+      <button class="btn" onclick="openQuests()">📜 Квесты</button>
+      <button class="btn btn-emerald" onclick="saveGame()">💾 Сохранить</button>
+    </div>
+  </header>
+
+  <div id="canvas-wrap">
+    <div class="zone-title" id="zone-display">🌲 Whispering Forest (Лес Шепота)</div>
+    <canvas id="game-canvas"></canvas>
+    <div id="floating-prompt" class="floating-prompt" style="display: none;"></div>
+
+    <!-- Virtual Mobile / Touch Controls -->
+    <div class="dpad">
+      <button class="dpad-btn" onclick="movePlayer(0, -1)">▲</button>
+      <div class="dpad-row">
+        <button class="dpad-btn" onclick="movePlayer(-1, 0)">◀</button>
+        <button class="dpad-btn" onclick="movePlayer(0, 1)">▼</button>
+        <button class="dpad-btn" onclick="movePlayer(1, 0)">▶</button>
+      </div>
+    </div>
+    <button class="action-btn" onclick="interact()" title="Взаимодействие / Действие">✋</button>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="inventory-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🎒 Инвентарь и Снаряжение</h3>
+      <button class="btn" onclick="closeModals()">✕</button>
+    </div>
+    <div id="inventory-list" style="display: grid; gap: 8px;"></div>
+  </div>
+</div>
+
+<div id="character-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>👤 Характеристики Героя</h3>
+      <button class="btn" onclick="closeModals()">✕</button>
+    </div>
+    <div id="character-stats" style="line-height: 1.8; font-size: 14px;"></div>
+  </div>
+</div>
+
+<div id="quests-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>📜 Журнал Заданий</h3>
+      <button class="btn" onclick="closeModals()">✕</button>
+    </div>
+    <div id="quests-list" style="line-height: 1.6; font-size: 14px;"></div>
+  </div>
+</div>
+
+<!-- Combat Modal -->
+<div id="combat-modal" class="modal">
+  <div class="modal-box" style="max-width: 580px;">
+    <div class="modal-head">
+      <h3 id="combat-enemy-name">⚔️ Битва</h3>
+    </div>
+    <div style="text-align: center; padding: 16px 0;">
+      <div id="combat-enemy-avatar" style="font-size: 54px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));">🐺</div>
+      <div style="font-weight: bold; margin-top: 8px; font-size: 15px;" id="combat-enemy-stats">Enemy HP: 45/45</div>
+      <div class="bar-bg" style="width: 220px; height: 10px; margin: 8px auto;"><div id="combat-enemy-hp-bar" class="bar-fill-hp" style="width: 100%;"></div></div>
+    </div>
+    <div id="combat-log" style="background: #020617; border: 1px solid #1e293b; padding: 10px; border-radius: 8px; font-size: 13px; height: 90px; overflow-y: auto; margin-bottom: 16px; color: #cbd5e1; line-height: 1.5;"></div>
+    <div id="combat-buttons" style="display: flex; gap: 8px;">
+      <button class="btn btn-primary" style="flex: 1; padding: 10px;" onclick="combatAttack()">⚔️ Удар (Attack)</button>
+      <button class="btn" style="flex: 1; padding: 10px;" onclick="combatSkill()">⚡ Умение (MP)</button>
+      <button class="btn" style="flex: 1; padding: 10px;" onclick="combatHeal()">🧪 Зелье (Potion)</button>
+    </div>
+    <div id="combat-victory-box" style="display: none; text-align: center; padding-top: 10px;">
+      <button class="btn btn-emerald" style="padding: 10px 24px; font-size: 14px;" onclick="finishCombatVictory()">🎉 Забрать награду и продолжить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Built-in Web Audio Synthesizer (100% offline, zero network requests)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, dur, gain=0.1) {
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(gain, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch(e){}
+}
+function sfxHit() { playTone(160, 'sawtooth', 0.15, 0.2); }
+function sfxVictory() { playTone(523, 'triangle', 0.15); setTimeout(()=>playTone(659, 'triangle', 0.15), 120); setTimeout(()=>playTone(784, 'triangle', 0.3), 240); }
+function sfxLoot() { playTone(880, 'sine', 0.12); setTimeout(()=>playTone(1174, 'sine', 0.25), 100); }
+function sfxMagic() { playTone(700, 'sine', 0.25, 0.15); }
+
+// Load Save from LocalStorage if exists
+let savedData = null;
+try {
+  const local = localStorage.getItem('eldoria_offline_save');
+  if (local) savedData = JSON.parse(local);
+} catch(e){}
+
+let player = savedData?.player || {
+  name: "Eldor",
+  heroClass: "Warrior",
+  x: 8,
+  y: 8,
+  stats: { hp: 110, maxHp: 110, mp: 45, maxMp: 45, level: 1, xp: 0, xpToNext: 100, gold: 80, baseAttack: 16, baseDefense: 10, baseMagic: 6 }
+};
+
+let inventory = savedData?.inventory || [
+  { id: 'hp_pot', name: '🧪 Зелье жизни (Healing Potion)', heal: 60, count: 4 },
+  { id: 'blade', name: '⚔️ Кованый меч (Iron Broadsword)', attack: 8, equipped: true },
+  { id: 'shield', name: '🛡️ Деревянный щит (Wooden Shield)', defense: 4, equipped: true }
+];
+
+let quests = savedData?.quests || [
+  { id: 'q1', title: 'Охота на волков (Wolf Hunt)', desc: 'Победите свирепых волков в лесу', progress: 0, target: 2, done: false },
+  { id: 'q2', title: 'Тайна древнего сундука', desc: 'Найдите скрытый сундук с сокровищами', progress: 0, target: 1, done: false }
+];
+
+let defeatedEnemies = new Set(savedData?.defeated || []);
+let chestsOpened = new Set(savedData?.chests || []);
+
+// Overworld Map (22x16)
+const MAP_W = 22, MAP_H = 16;
+const TILE_SIZE = 44;
+const map = [];
+for (let y = 0; y < MAP_H; y++) {
+  const row = [];
+  for (let x = 0; x < MAP_W; x++) {
+    if (x === 0 || x === MAP_W-1 || y === 0 || y === MAP_H-1) row.push('tree');
+    else if (y === 8 || (x === 8 && y >= 4 && y <= 12)) row.push('path');
+    else if (x === 18 && y === 12) row.push('portal');
+    else row.push('grass');
+  }
+  map.push(row);
+}
+map[5][5] = 'campfire';
+map[14][4] = 'chest';
+map[3][17] = 'chest';
+
+// Monster Spawns
+let monsters = [
+  { id: 'm1', name: 'Свирепый волк (Timber Wolf)', x: 13, y: 5, hp: 45, maxHp: 45, attack: 11, icon: '🐺', xp: 40, gold: 25 },
+  { id: 'm2', name: 'Лесной гоблин (Goblin Scout)', x: 12, y: 11, hp: 55, maxHp: 55, attack: 14, icon: '👺', xp: 50, gold: 35 },
+  { id: 'm3', name: 'Страж Крипты (Skeleton Guard)', x: 4, y: 12, hp: 70, maxHp: 70, attack: 18, icon: '💀', xp: 75, gold: 50 },
+  { id: 'boss', name: 'Архимаг Пустоты (Void Archon)', x: 17, y: 4, hp: 140, maxHp: 140, attack: 24, icon: '🧙‍♂️', xp: 200, gold: 150, isBoss: true }
+];
+
+// Canvas Setup
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+let stepAnim = 0;
+setInterval(() => { stepAnim = (stepAnim + 1) % 4; }, 200);
+
+function render() {
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const camX = Math.max(0, Math.min(MAP_W * TILE_SIZE - canvas.width, player.x * TILE_SIZE + TILE_SIZE/2 - canvas.width/2));
+  const camY = Math.max(0, Math.min(MAP_H * TILE_SIZE - canvas.height, player.y * TILE_SIZE + TILE_SIZE/2 - canvas.height/2));
+
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // Render Tiles
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const type = map[y][x];
+      const px = x * TILE_SIZE, py = y * TILE_SIZE;
+
+      if (type === 'grass') {
+        ctx.fillStyle = (x + y) % 2 === 0 ? '#15803d' : '#166534';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        // Small flowers / grass blades
+        if ((x * 7 + y * 13) % 5 === 0) {
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(px + 12, py + 12, 3, 3);
+        }
+      } else if (type === 'path') {
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+      } else if (type === 'tree') {
+        ctx.fillStyle = '#14532d';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(px + 18, py + 22, 8, 22);
+        ctx.fillStyle = '#15803d';
+        ctx.beginPath();
+        ctx.arc(px + 22, py + 18, 18, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'campfire') {
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(px + 10, py + 24, 24, 6);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(px + 22, py + 18, 10 + Math.sin(Date.now() / 150) * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(px + 22, py + 19, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'chest') {
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        const isOpened = chestsOpened.has(`${x}_${y}`);
+        ctx.fillStyle = isOpened ? '#78350f' : '#d97706';
+        ctx.fillRect(px + 8, py + 14, 28, 22);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(px + 18, py + 22, 8, 6);
+      } else if (type === 'portal') {
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#6366f1';
+        ctx.beginPath();
+        ctx.arc(px + 22, py + 22, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c084fc';
+        ctx.beginPath();
+        ctx.arc(px + 22, py + 22, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Render Monsters
+  monsters.forEach(m => {
+    if (defeatedEnemies.has(m.id)) return;
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.icon, m.x * TILE_SIZE + 22, m.y * TILE_SIZE + 32);
+    // HP bar above monster
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(m.x * TILE_SIZE + 6, m.y * TILE_SIZE + 2, 32, 4);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(m.x * TILE_SIZE + 6, m.y * TILE_SIZE + 2, 32 * (m.hp / m.maxHp), 4);
+  });
+
+  // Render Player
+  const px = player.x * TILE_SIZE + 22;
+  const py = player.y * TILE_SIZE + 22;
+  ctx.save();
+  ctx.translate(px, py);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 14, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Character body
+  ctx.fillStyle = player.heroClass === 'Warrior' ? '#dc2626' : player.heroClass === 'Mage' ? '#7c3aed' : '#059669';
+  ctx.fillRect(-10, -6, 20, 18);
+  // Head
+  ctx.fillStyle = '#fde047';
+  ctx.beginPath();
+  ctx.arc(0, -12, 8, 0, Math.PI * 2);
+  ctx.fill();
+  // Weapon/Shield
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(10, -4, 4, 16);
+
+  ctx.restore();
+
+  ctx.restore();
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// Player Movement
+function movePlayer(dx, dy) {
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H && map[ny][nx] !== 'tree') {
+    player.x = nx;
+    player.y = ny;
+    checkEvents();
+  }
+}
+
+function checkEvents() {
+  const prompt = document.getElementById('floating-prompt');
+  // Check enemy encounter
+  const enemy = monsters.find(m => m.x === player.x && m.y === player.y && !defeatedEnemies.has(m.id));
+  if (enemy) {
+    prompt.style.display = 'none';
+    startCombat(enemy);
+    return;
+  }
+
+  // Campfire rest
+  if (map[player.y][player.x] === 'campfire') {
+    player.stats.hp = player.stats.maxHp;
+    player.stats.mp = player.stats.maxMp;
+    updateHUD();
+    prompt.textContent = "🔥 Отдых у костра: Здоровье и Мана полностью восстановлены!";
+    prompt.style.display = 'block';
+    setTimeout(() => prompt.style.display = 'none', 2500);
+    return;
+  }
+
+  // Chest
+  const chestKey = `${player.x}_${player.y}`;
+  if (map[player.y][player.x] === 'chest' && !chestsOpened.has(chestKey)) {
+    prompt.textContent = "Нажмите ПРОБЕЛ / ✋ чтобы открыть сундук!";
+    prompt.style.display = 'block';
+    return;
+  }
+
+  // Portal
+  if (map[player.y][player.x] === 'portal') {
+    prompt.textContent = "🌀 Древний портал искрится магией...";
+    prompt.style.display = 'block';
+    return;
+  }
+
+  prompt.style.display = 'none';
+}
+
+function interact() {
+  const chestKey = `${player.x}_${player.y}`;
+  if (map[player.y][player.x] === 'chest' && !chestsOpened.has(chestKey)) {
+    chestsOpened.add(chestKey);
+    player.stats.gold += 80;
+    inventory.push({ id: 'elixir_' + Date.now(), name: '🧪 Большое зелье жизни', heal: 100, count: 2 });
+    sfxLoot();
+    updateHUD();
+    alert("✨ Вы открыли древний кованый сундук!\nПолучено: +80 золота и 2 Больших зелья жизни!");
+    document.getElementById('floating-prompt').style.display = 'none';
+    // Update quest
+    const q2 = quests.find(q => q.id === 'q2');
+    if (q2 && !q2.done) {
+      q2.progress = 1;
+      q2.done = true;
+      player.stats.xp += 60;
+      alert("📜 Квест выполнен: Тайна древнего сундука! (+60 XP)");
+    }
+  }
+}
+
+// Combat Engine
+let activeCombat = null;
+function startCombat(enemy) {
+  activeCombat = { enemy, enemyHp: enemy.hp };
+  sfxMagic();
+  document.getElementById('combat-enemy-name').textContent = '⚔️ Битва против: ' + enemy.name;
+  document.getElementById('combat-enemy-avatar').textContent = enemy.icon;
+  document.getElementById('combat-enemy-stats').textContent = 'HP: ' + enemy.hp + ' / ' + enemy.maxHp;
+  document.getElementById('combat-enemy-hp-bar').style.width = '100%';
+  document.getElementById('combat-log').innerHTML = 'На вас напал ' + enemy.name + '! Выберите действие.';
+  document.getElementById('combat-buttons').style.display = 'flex';
+  document.getElementById('combat-victory-box').style.display = 'none';
+  document.getElementById('combat-modal').style.display = 'flex';
+}
+
+function combatAttack() {
+  if (!activeCombat) return;
+  sfxHit();
+  const dmg = player.stats.baseAttack + Math.floor(Math.random() * 6);
+  activeCombat.enemyHp = Math.max(0, activeCombat.enemyHp - dmg);
+
+  const log = document.getElementById('combat-log');
+  log.innerHTML = 'Вы нанесли ' + activeCombat.enemy.name + ' <strong style="color:#f59e0b">' + dmg + '</strong> урона!<br>' + log.innerHTML;
+  document.getElementById('combat-enemy-stats').textContent = 'HP: ' + activeCombat.enemyHp + ' / ' + activeCombat.enemy.maxHp;
+  document.getElementById('combat-enemy-hp-bar').style.width = (activeCombat.enemyHp / activeCombat.enemy.maxHp * 100) + '%';
+
+  if (activeCombat.enemyHp <= 0) {
+    // Victory!
+    sfxVictory();
+    log.innerHTML = '<strong style="color:#34d399">✨ Враг повержен! Победа за вами!</strong><br>' + log.innerHTML;
+    document.getElementById('combat-buttons').style.display = 'none';
+    document.getElementById('combat-victory-box').style.display = 'block';
+    return;
+  }
+
+  // Monster Counter-attack
+  setTimeout(() => {
+    if (!activeCombat) return;
+    const def = player.stats.baseDefense;
+    const eDmg = Math.max(2, activeCombat.enemy.attack - Math.floor(def / 3));
+    player.stats.hp = Math.max(0, player.stats.hp - eDmg);
+    log.innerHTML = activeCombat.enemy.name + ' наносит вам <strong style="color:#ef4444">' + eDmg + '</strong> урона!<br>' + log.innerHTML;
+    updateHUD();
+
+    if (player.stats.hp <= 0) {
+      alert("💀 Вы пали в бою... Возрождение у теплого костра!");
+      player.stats.hp = player.stats.maxHp;
+      player.x = 5; player.y = 5;
+      closeModals();
+      activeCombat = null;
+      updateHUD();
+    }
+  }, 450);
+}
+
+function combatSkill() {
+  if (player.stats.mp < 12) {
+    alert("Недостаточно маны (нужно 12 MP)!");
+    return;
+  }
+  player.stats.mp -= 12;
+  updateHUD();
+  sfxMagic();
+  player.stats.baseAttack += 8;
+  combatAttack();
+  player.stats.baseAttack -= 8;
+}
+
+function combatHeal() {
+  const pot = inventory.find(i => i.heal && (i.count || 1) > 0);
+  if (!pot) {
+    alert("У вас нет лечебных зелий!");
+    return;
+  }
+  player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + pot.heal);
+  if (pot.count) pot.count--;
+  updateHUD();
+  const log = document.getElementById('combat-log');
+  log.innerHTML = '<strong style="color:#22c55e">🧪 Вы выпили ' + pot.name + ' (+ ' + pot.heal + ' HP)!</strong><br>' + log.innerHTML;
+}
+
+function finishCombatVictory() {
+  if (!activeCombat) return;
+  const enemy = activeCombat.enemy;
+  defeatedEnemies.add(enemy.id);
+  player.stats.xp += enemy.xp;
+  player.stats.gold += enemy.gold;
+
+  // Quest check
+  const q1 = quests.find(q => q.id === 'q1');
+  if (q1 && !q1.done) {
+    q1.progress++;
+    if (q1.progress >= q1.target) {
+      q1.done = true;
+      player.stats.xp += 80;
+      alert("📜 Квест выполнен: Охота на волков! (+80 XP)");
+    }
+  }
+
+  // Level up check
+  if (player.stats.xp >= player.stats.xpToNext) {
+    player.stats.level++;
+    player.stats.xp -= player.stats.xpToNext;
+    player.stats.xpToNext = Math.round(player.stats.xpToNext * 1.5);
+    player.stats.maxHp += 20;
+    player.stats.hp = player.stats.maxHp;
+    player.stats.maxMp += 10;
+    player.stats.mp = player.stats.maxMp;
+    player.stats.baseAttack += 4;
+    player.stats.baseDefense += 3;
+    alert("🎉 УРОВЕНЬ ПОВЫШЕН! Теперь вы " + player.stats.level + " уровня!\nХарактеристики увеличены!");
+  }
+
+  closeModals();
+  activeCombat = null;
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('hero-name').textContent = player.name;
+  document.getElementById('hero-level').textContent = 'Lv.' + player.stats.level + ' ' + player.heroClass;
+  document.getElementById('hero-gold').textContent = '💰 ' + player.stats.gold;
+  document.getElementById('hp-bar').style.width = (player.stats.hp / player.stats.maxHp * 100) + '%';
+  document.getElementById('mp-bar').style.width = (player.stats.mp / player.stats.maxMp * 100) + '%';
+}
+updateHUD();
+
+function openInventory() {
+  const list = document.getElementById('inventory-list');
+  list.innerHTML = inventory.map(i => `
+    <div style="background:#1e293b; border: 1px solid #334155; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-weight: bold; color: #f1f5f9;">${i.name}</div>
+        <div style="font-size: 11px; color: #94a3b8;">${i.attack ? 'Атака: +' + i.attack : i.defense ? 'Защита: +' + i.defense : 'Лечение: +' + i.heal + ' HP'} ${i.count ? '(' + i.count + ' шт.)' : ''}</div>
+      </div>
+      ${i.heal ? `<button class="btn btn-emerald" onclick="usePotion('${i.id}')">Использовать</button>` : `<span style="font-size:11px; color:#a5b4fc;">Экипировано</span>`}
+    </div>
+  `).join('');
+  document.getElementById('inventory-modal').style.display = 'flex';
+}
+
+function usePotion(id) {
+  const pot = inventory.find(i => i.id === id);
+  if (pot && pot.heal) {
+    player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + pot.heal);
+    if (pot.count) pot.count--;
+    updateHUD();
+    openInventory();
+  }
+}
+
+function openCharacter() {
+  const stats = document.getElementById('character-stats');
+  stats.innerHTML = `
+    <div style="font-size: 16px; font-weight: bold; color: #f59e0b; margin-bottom: 8px;">${player.name} (${player.heroClass})</div>
+    <div>Уровень: <strong>${player.stats.level}</strong> (Опыт: ${player.stats.xp} / ${player.stats.xpToNext})</div>
+    <div>Здоровье: <strong style="color:#ef4444">${player.stats.hp} / ${player.stats.maxHp}</strong></div>
+    <div>Мана: <strong style="color:#6366f1">${player.stats.mp} / ${player.stats.maxMp}</strong></div>
+    <div>Сила атаки: <strong>${player.stats.baseAttack}</strong></div>
+    <div>Защита: <strong>${player.stats.baseDefense}</strong></div>
+    <div>Золото: <strong style="color:#eab308">💰 ${player.stats.gold}</strong></div>
+  `;
+  document.getElementById('character-modal').style.display = 'flex';
+}
+
+function openQuests() {
+  const list = document.getElementById('quests-list');
+  list.innerHTML = quests.map(q => `
+    <div style="background:#1e293b; border: 1px solid #334155; padding:10px; border-radius:8px; margin-bottom:8px;">
+      <div style="font-weight:bold; color: ${q.done ? '#34d399' : '#f59e0b'};">${q.done ? '✅' : '⏳'} ${q.title}</div>
+      <div style="font-size:12px; color:#cbd5e1; margin-top:2px;">${q.desc}</div>
+      <div style="font-size:11px; color:#94a3b8; margin-top:4px;">Прогресс: ${q.progress} / ${q.target}</div>
+    </div>
+  `).join('');
+  document.getElementById('quests-modal').style.display = 'flex';
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+}
+
+function saveGame() {
+  const data = {
+    player,
+    inventory,
+    quests,
+    defeated: Array.from(defeatedEnemies),
+    chests: Array.from(chestsOpened)
+  };
+  localStorage.setItem('eldoria_offline_save', JSON.stringify(data));
+  sfxLoot();
+  alert("💾 Игра успешно сохранена в память браузера!");
+}
+
+// Keyboard Listeners
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') movePlayer(0, -1);
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') movePlayer(0, 1);
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') movePlayer(-1, 0);
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') movePlayer(1, 0);
+  if (e.key === ' ' || e.key === 'e' || e.key === 'E') interact();
+  if (e.key === 'b' || e.key === 'B' || e.key === 'i' || e.key === 'I') openInventory();
+  if (e.key === 'c' || e.key === 'C') openCharacter();
+  if (e.key === 'q' || e.key === 'Q') openQuests();
+  if (e.key === 'Escape') closeModals();
+});
+</script>
+</body>
+</html>

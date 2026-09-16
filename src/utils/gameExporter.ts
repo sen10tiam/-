@@ -557,7 +557,12 @@ G               : Open Mystic Forge
 `;
   zip.file('CONTROLS.txt', controlsContent);
 
-  // 4. Save data backup if available
+  // 4. Windows 1-click launcher
+  zip.file('start_game.bat', `@echo off
+start Chronicles_of_Eldoria.html
+`);
+
+  // 5. Save data backup if available
   if (saveData) {
     zip.file('save_backup.json', JSON.stringify(saveData, null, 2));
   }

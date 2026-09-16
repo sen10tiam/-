@@ -12,6 +12,41 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Fallback for opening index.html directly via file:// in Windows/Mac/Linux
+      if (window.location.protocol === 'file:') {
+        try {
+          window.location.replace('./play_offline.html');
+        } catch (e) {}
+
+        window.addEventListener('DOMContentLoaded', function () {
+          var root = document.getElementById('root');
+          if (root) {
+            root.innerHTML = [
+              '<div style="min-height: 100vh; background: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px;">',
+              '  <div style="max-width: 640px; background: #0f172a; border: 1px solid #334155; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); text-align: center;">',
+              '    <div style="font-size: 48px; margin-bottom: 12px;">⚔️</div>',
+              '    <h1 style="font-size: 24px; font-weight: 800; color: #f59e0b; margin-bottom: 12px;">Chronicles of Eldoria: 2D RPG</h1>',
+              '    <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 24px;">',
+              '      Вы открыли исходный код проекта напрямую через проводник (<code>file://</code>). В современных браузерах файлы TypeScript (<code>.tsx</code>) блокируются политикой безопасности CORS.',
+              '    </p>',
+              '    <a href="./play_offline.html" style="display: inline-block; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(79,70,229,0.4); margin-bottom: 24px;">',
+              '      ▶ Запустить автономную версию (play_offline.html)',
+              '    </a>',
+              '    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; text-align: left; font-size: 13px; color: #cbd5e1; line-height: 1.6;">',
+              '      <div style="font-weight: bold; color: #f59e0b; margin-bottom: 8px;">Другие способы запуска:</div>',
+              '      <div style="margin-bottom: 6px;">1. <strong>Windows:</strong> Дважды кликните файл <code>start_game.bat</code> в папке игры.</div>',
+              '      <div style="margin-bottom: 6px;">2. <strong>Через терминал (Node.js):</strong></div>',
+              '      <code style="display: block; background: #020617; padding: 8px 12px; border-radius: 6px; color: #38bdf8; font-family: monospace; margin: 6px 0;">npm install<br>npm run dev</code>',
+              '      <div>Затем откройте в браузере: <strong style="color: #34d399;">http://localhost:3000</strong></div>',
+              '    </div>',
+              '  </div>',
+              '</div>'
+            ].join('\n');
+          }
+        });
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
