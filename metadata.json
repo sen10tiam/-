@@ -1,0 +1,7 @@
+{
+  "name": "Chronicles of Eldoria: 2D RPG",
+  "description": "A complete 2D RPG game featuring tile-based world exploration, turn-based tactical combat, quests, inventory, and Gemini-powered image generation for hero portraits, legendary relics, and world lore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
